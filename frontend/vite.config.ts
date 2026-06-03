@@ -12,4 +12,19 @@ export default defineConfig({
   tanstackStart: {
     server: { entry: "server" },
   },
+  vite: {
+    server: {
+      proxy: {
+        "/prediction/": {
+          target: "http://127.0.0.1:8000",
+          changeOrigin: true,
+          configure: (proxy) => {
+            proxy.on("proxyReq", (proxyReq) => {
+              proxyReq.setHeader("Origin", "http://127.0.0.1:8000");
+            });
+          },
+        },
+      },
+    },
+  },
 });

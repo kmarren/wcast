@@ -1,0 +1,35 @@
+{% extends "main.html" %}
+
+{% block title %}
+  Game Prediction
+{% endblock %}
+
+{% block content %}
+  <p><a href="/">HOME</a></p>
+
+  <h1>Predict a Game</h1>
+
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+
+    <button type="submit">Predict</button>
+  </form>
+
+  {% if results %}
+    <hr>
+
+    <h2>Prediction Results</h2>
+
+    <p>
+      <strong>Game:</strong>
+      {{ game.team }} vs {{ game.opponent }}
+    </p>
+
+    <h3>Logistic Regression</h3>
+    <p>Prediction: {{ results.logistic_prediction }}</p>
+
+    <h3>Random Forest</h3>
+    <p>Prediction: {{ results.random_forest_prediction }}</p>
+  {% endif %}
+{% endblock %}

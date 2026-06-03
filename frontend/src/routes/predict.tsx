@@ -1,14 +1,19 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { SiteHeader, SiteFooter } from "@/components/site-chrome";
-import { TEAMS, type Team } from "@/data/teams";
+import { BACKEND_TEAM_STATS, TEAMS, type Team } from "@/data/teams";
 import { TeamLogo } from "@/components/team-logo";
+import { Input } from "@/components/ui/input";
 
 export const Route = createFileRoute("/predict")({
   head: () => ({
     meta: [
       { title: "Pick Your Matchup — HoopsEdge" },
-      { name: "description", content: "Select two NCAA D1 Women's Basketball teams to generate a machine learning matchup prediction." },
+      {
+        name: "description",
+        content:
+          "Select two NCAA D1 Women's Basketball teams to generate a machine learning matchup prediction.",
+      },
     ],
   }),
   component: PredictPage,
@@ -16,6 +21,43 @@ export const Route = createFileRoute("/predict")({
 
 const CONFERENCES = ["All", "SEC", "Big Ten", "ACC", "Big 12"] as const;
 type Conf = (typeof CONFERENCES)[number];
+type StatValues = {
+  gamesPlayed: string;
+  winPercentage: string;
+  sos: string;
+};
+
+const EMPTY_STATS: StatValues = {
+  gamesPlayed: "",
+  winPercentage: "",
+  sos: "",
+};
+
+function statsForTeam(team: Team | null): StatValues {
+  if (!team) return EMPTY_STATS;
+  const stats = BACKEND_TEAM_STATS[team.id];
+
+  return {
+    gamesPlayed: String(stats?.gamesPlayed ?? ""),
+    winPercentage: String(stats?.winPercentage ?? ""),
+    sos: String(stats?.sos ?? ""),
+  };
+}
+
+function validStats(stats: StatValues) {
+  const gamesPlayed = Number(stats.gamesPlayed);
+  const winPercentage = Number(stats.winPercentage);
+  const sos = Number(stats.sos);
+
+  return (
+    Number.isInteger(gamesPlayed) &&
+    gamesPlayed >= 0 &&
+    Number.isFinite(winPercentage) &&
+    winPercentage >= 0 &&
+    winPercentage <= 1 &&
+    Number.isFinite(sos)
+  );
+}
 
 function PredictPage() {
   const navigate = useNavigate();
@@ -24,6 +66,16 @@ function PredictPage() {
   const [active, setActive] = useState<"A" | "B">("A");
   const [conf, setConf] = useState<Conf>("All");
   const [query, setQuery] = useState("");
+  const [teamAStats, setTeamAStats] = useState<StatValues>(EMPTY_STATS);
+  const [teamBStats, setTeamBStats] = useState<StatValues>(EMPTY_STATS);
+
+  useEffect(() => {
+    setTeamAStats(statsForTeam(teamA));
+  }, [teamA?.id]);
+
+  useEffect(() => {
+    setTeamBStats(statsForTeam(teamB));
+  }, [teamB?.id]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -32,7 +84,8 @@ function PredictPage() {
     );
   }, [conf, query]);
 
-  const canPredict = teamA && teamB && teamA.id !== teamB.id;
+  const canPredict =
+    teamA && teamB && teamA.id !== teamB.id && validStats(teamAStats) && validStats(teamBStats);
 
   const select = (t: Team) => {
     if (active === "A") {
@@ -50,7 +103,16 @@ function PredictPage() {
     if (!canPredict) return;
     navigate({
       to: "/result",
-      search: { a: teamA!.id, b: teamB!.id },
+      search: {
+        a: teamA!.id,
+        b: teamB!.id,
+        agp: teamAStats.gamesPlayed,
+        awp: teamAStats.winPercentage,
+        asos: teamAStats.sos,
+        bgp: teamBStats.gamesPlayed,
+        bwp: teamBStats.winPercentage,
+        bsos: teamBStats.sos,
+      },
     });
   };
 
@@ -60,13 +122,14 @@ function PredictPage() {
 
       <section className="border-b border-border">
         <div className="mx-auto max-w-7xl px-6 py-12">
-          <p className="text-xs font-semibold uppercase tracking-widest text-primary">Step 1 · Build the matchup</p>
+          <p className="text-xs font-semibold uppercase tracking-widest text-primary">
+            Step 1 · Build the matchup
+          </p>
           <h1 className="mt-2 font-display text-4xl font-bold tracking-tight md:text-5xl">
             Pick two teams.
           </h1>
           <p className="mt-3 max-w-2xl text-muted-foreground">
-            Tap a slot below, then choose a school from the grid. The model takes
-            it from there.
+            Tap a slot below, then choose a school from the grid. The model takes it from there.
           </p>
         </div>
       </section>
@@ -81,7 +144,9 @@ function PredictPage() {
             onClick={() => setActive("A")}
             onClear={() => setTeamA(null)}
           />
-          <div className="flex items-center justify-center font-display text-3xl text-muted-foreground">vs</div>
+          <div className="flex items-center justify-center font-display text-3xl text-muted-foreground">
+            vs
+          </div>
           <TeamSlot
             label="Team B"
             team={teamB}
@@ -90,13 +155,29 @@ function PredictPage() {
             onClear={() => setTeamB(null)}
           />
         </div>
+        {(teamA || teamB) && (
+          <div className="mx-auto grid max-w-7xl gap-4 px-6 pb-8 md:grid-cols-2">
+            <StatsPanel
+              label="Team A inputs"
+              team={teamA}
+              stats={teamAStats}
+              onChange={setTeamAStats}
+            />
+            <StatsPanel
+              label="Team B inputs"
+              team={teamB}
+              stats={teamBStats}
+              onChange={setTeamBStats}
+            />
+          </div>
+        )}
         <div className="mx-auto max-w-7xl px-6 pb-10">
           <button
             onClick={run}
             disabled={!canPredict}
             className="w-full rounded-full bg-foreground px-6 py-4 font-display text-base font-semibold text-background shadow-sm transition-all hover:scale-[1.005] disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
           >
-            {canPredict ? "Predict winner →" : "Select two teams to continue"}
+            {canPredict ? "Predict winner →" : "Select two teams and valid model inputs"}
           </button>
         </div>
       </section>
@@ -160,13 +241,103 @@ function PredictPage() {
             })}
           </div>
           {filtered.length === 0 && (
-            <p className="py-12 text-center text-sm text-muted-foreground">No teams match that search.</p>
+            <p className="py-12 text-center text-sm text-muted-foreground">
+              No teams match that search.
+            </p>
           )}
         </div>
       </section>
 
       <SiteFooter />
     </div>
+  );
+}
+
+function StatsPanel({
+  label,
+  team,
+  stats,
+  onChange,
+}: {
+  label: string;
+  team: Team | null;
+  stats: StatValues;
+  onChange: (stats: StatValues) => void;
+}) {
+  const disabled = !team;
+
+  return (
+    <div className="rounded-2xl border border-border bg-card p-5">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+            {label}
+          </p>
+          <p className="mt-1 font-display text-lg font-bold">{team?.short ?? "Choose a team"}</p>
+        </div>
+        {team && <TeamLogo team={team} size={40} />}
+      </div>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <LabeledNumber
+          label="Games played"
+          value={stats.gamesPlayed}
+          disabled={disabled}
+          min={0}
+          step={1}
+          onChange={(gamesPlayed) => onChange({ ...stats, gamesPlayed })}
+        />
+        <LabeledNumber
+          label="Win pct"
+          value={stats.winPercentage}
+          disabled={disabled}
+          min={0}
+          max={1}
+          step={0.0001}
+          onChange={(winPercentage) => onChange({ ...stats, winPercentage })}
+        />
+        <LabeledNumber
+          label="SOS"
+          value={stats.sos}
+          disabled={disabled}
+          step={0.0001}
+          onChange={(sos) => onChange({ ...stats, sos })}
+        />
+      </div>
+    </div>
+  );
+}
+
+function LabeledNumber({
+  label,
+  value,
+  disabled,
+  min,
+  max,
+  step,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  disabled: boolean;
+  min?: number;
+  max?: number;
+  step: number;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="space-y-1.5 text-sm">
+      <span className="block text-xs font-medium text-muted-foreground">{label}</span>
+      <Input
+        type="number"
+        value={value}
+        disabled={disabled}
+        min={min}
+        max={max}
+        step={step}
+        onChange={(event) => onChange(event.target.value)}
+        className="h-10 bg-background"
+      />
+    </label>
   );
 }
 
@@ -198,7 +369,9 @@ function TeamSlot({
           <TeamLogo team={team} size={72} />
           <div>
             <p className="font-display text-lg font-bold">{team.short}</p>
-            <p className="text-xs uppercase tracking-wider text-muted-foreground">{team.conference}</p>
+            <p className="text-xs uppercase tracking-wider text-muted-foreground">
+              {team.conference}
+            </p>
           </div>
           <span
             role="button"

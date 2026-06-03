@@ -1,43 +1,80 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { SiteHeader, SiteFooter } from "@/components/site-chrome";
 import { getTeam } from "@/data/teams";
 import { TeamLogo } from "@/components/team-logo";
-import { predict, type Prediction } from "@/lib/predict";
+import { predict, type Prediction, type PredictionInputStats } from "@/lib/predict";
 
-type Search = { a: string; b: string };
+type Search = {
+  a: string;
+  b: string;
+  agp: string;
+  awp: string;
+  asos: string;
+  bgp: string;
+  bwp: string;
+  bsos: string;
+};
 
 export const Route = createFileRoute("/result")({
   validateSearch: (s: Record<string, unknown>): Search => ({
     a: String(s.a ?? ""),
     b: String(s.b ?? ""),
+    agp: String(s.agp ?? ""),
+    awp: String(s.awp ?? ""),
+    asos: String(s.asos ?? ""),
+    bgp: String(s.bgp ?? ""),
+    bwp: String(s.bwp ?? ""),
+    bsos: String(s.bsos ?? ""),
   }),
   head: () => ({
     meta: [
       { title: "Prediction Result — HoopsEdge" },
-      { name: "description", content: "Machine learning matchup prediction for NCAA D1 Women's Basketball." },
+      {
+        name: "description",
+        content: "Machine learning matchup prediction for NCAA D1 Women's Basketball.",
+      },
     ],
   }),
   component: ResultPage,
 });
 
 function ResultPage() {
-  const { a, b } = Route.useSearch();
+  const { a, b, agp, awp, asos, bgp, bwp, bsos } = Route.useSearch();
   const navigate = useNavigate();
   const teamA = getTeam(a);
   const teamB = getTeam(b);
+  const inputStats = useMemo<PredictionInputStats>(
+    () => ({
+      teamGamesPlayed: numericSearchValue(agp),
+      teamWinPercentage: numericSearchValue(awp),
+      teamSOS: numericSearchValue(asos),
+      opponentGamesPlayed: numericSearchValue(bgp),
+      opponentWinPercentage: numericSearchValue(bwp),
+      opponentSOS: numericSearchValue(bsos),
+    }),
+    [agp, awp, asos, bgp, bwp, bsos],
+  );
   const [pred, setPred] = useState<Prediction | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!teamA || !teamB) return;
     setLoading(true);
     setPred(null);
-    predict(teamA.id, teamB.id).then((p) => {
-      setPred(p);
-      setLoading(false);
-    });
-  }, [teamA?.id, teamB?.id]);
+    setError(null);
+    predict(teamA.id, teamB.id, inputStats)
+      .then((p) => {
+        setPred(p);
+      })
+      .catch((err: Error) => {
+        setError(err.message);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [teamA?.id, teamB?.id, inputStats]);
 
   if (!teamA || !teamB) {
     return (
@@ -46,7 +83,10 @@ function ResultPage() {
         <div className="mx-auto max-w-2xl px-6 py-24 text-center">
           <h1 className="font-display text-3xl font-bold">Missing matchup</h1>
           <p className="mt-3 text-muted-foreground">Select two teams to generate a prediction.</p>
-          <Link to="/predict" className="mt-6 inline-block rounded-full bg-foreground px-6 py-3 text-sm font-semibold text-background">
+          <Link
+            to="/predict"
+            className="mt-6 inline-block rounded-full bg-foreground px-6 py-3 text-sm font-semibold text-background"
+          >
             Pick teams
           </Link>
         </div>
@@ -59,79 +99,65 @@ function ResultPage() {
     <div className="min-h-screen bg-background">
       <SiteHeader />
 
-      {loading || !pred ? (
+      {loading ? (
         <LoadingState teamA={teamA} teamB={teamB} />
+      ) : error || !pred ? (
+        <ErrorState error={error ?? "Prediction failed."} />
       ) : (
         <>
-          {/* HERO RESULT */}
+          {/* MODEL PICKS */}
           <section className="border-b border-border bg-foreground text-background">
             <div className="mx-auto max-w-7xl px-6 py-16">
               <p className="text-xs font-semibold uppercase tracking-widest text-background/60">
-                Predicted Winner
+                Backend Prediction Results
               </p>
               <div className="mt-6 grid items-center gap-10 md:grid-cols-[1fr_auto_1fr]">
-                <ResultSide team={pred.winner} score={pred.predictedScore.winner} pct={pred.winnerProb} winner />
+                <MatchupSide team={teamA} label="Team A" />
                 <span className="text-center font-display text-2xl text-background/40">—</span>
-                <ResultSide team={pred.loser} score={pred.predictedScore.loser} pct={1 - pred.winnerProb} align="right" />
-              </div>
-
-              <div className="mt-12">
-                <div className="flex justify-between text-xs uppercase tracking-widest text-background/60">
-                  <span>{pred.winner.short}</span>
-                  <span>Win Probability</span>
-                  <span>{pred.loser.short}</span>
-                </div>
-                <div className="mt-3 h-3 overflow-hidden rounded-full bg-background/15">
-                  <div
-                    className="h-full rounded-full bg-primary transition-[width] duration-700"
-                    style={{ width: `${Math.round(pred.winnerProb * 100)}%` }}
-                  />
-                </div>
+                <MatchupSide team={teamB} label="Team B" align="right" />
               </div>
             </div>
           </section>
 
-          {/* FACTORS */}
           <section className="border-b border-border">
             <div className="mx-auto max-w-7xl px-6 py-16">
               <div className="mb-10 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-widest text-primary">Model Breakdown</p>
+                  <p className="text-xs font-semibold uppercase tracking-widest text-primary">
+                    Model Breakdown
+                  </p>
                   <h2 className="mt-2 font-display text-3xl font-bold tracking-tight md:text-4xl">
-                    What's driving the call.
+                    Backend model picks.
                   </h2>
                 </div>
                 <p className="max-w-md text-sm text-muted-foreground">
-                  Edges shown favor <span className="font-semibold text-foreground">{pred.winner.short}</span>.
-                  Negative values mean <span className="font-semibold text-foreground">{pred.loser.short}</span> has the advantage.
+                  Sent to Django as{" "}
+                  <span className="font-semibold text-foreground">{pred.backendPayload.team}</span>{" "}
+                  vs{" "}
+                  <span className="font-semibold text-foreground">
+                    {pred.backendPayload.opponent}
+                  </span>
+                  .
                 </p>
               </div>
 
-              <div className="space-y-4">
-                {pred.factors.map((f) => {
-                  const pct = Math.round(Math.abs(f.winnerEdge) * 100);
-                  const positive = f.winnerEdge >= 0;
-                  return (
-                    <div key={f.label} className="rounded-2xl border border-border bg-card p-5">
-                      <div className="mb-3 flex items-center justify-between">
-                        <p className="font-display text-sm font-bold">{f.label}</p>
-                        <p className="text-xs font-mono text-muted-foreground">
-                          {positive ? "+" : "−"}{pct}% edge → {positive ? pred.winner.short : pred.loser.short}
+              <div className="grid gap-4 md:grid-cols-2">
+                {pred.modelPicks.map((pick) => (
+                  <div key={pick.model} className="rounded-2xl border border-border bg-card p-5">
+                    <p className="text-xs font-semibold uppercase tracking-widest text-primary">
+                      {pick.model}
+                    </p>
+                    <div className="mt-4 flex items-center gap-4">
+                      <TeamLogo team={pick.winner} size={48} />
+                      <div>
+                        <p className="font-display text-xl font-bold">{pick.winner.short}</p>
+                        <p className="text-sm text-muted-foreground">
+                          Backend returned {pick.result} for Team A.
                         </p>
                       </div>
-                      <div className="relative h-2 overflow-hidden rounded-full bg-secondary">
-                        <div className="absolute left-1/2 top-0 h-full w-px bg-border" />
-                        <div
-                          className={`absolute top-0 h-full ${positive ? "bg-primary" : "bg-foreground"}`}
-                          style={{
-                            left: positive ? "50%" : `${50 - pct / 2}%`,
-                            width: `${pct / 2}%`,
-                          }}
-                        />
-                      </div>
                     </div>
-                  );
-                })}
+                  </div>
+                ))}
               </div>
             </div>
           </section>
@@ -152,10 +178,17 @@ function ResultPage() {
                 <button
                   onClick={() => {
                     setLoading(true);
-                    predict(teamA.id, teamB.id).then((p) => {
-                      setPred(p);
-                      setLoading(false);
-                    });
+                    setError(null);
+                    predict(teamA.id, teamB.id, inputStats)
+                      .then((p) => {
+                        setPred(p);
+                      })
+                      .catch((err: Error) => {
+                        setError(err.message);
+                      })
+                      .finally(() => {
+                        setLoading(false);
+                      });
                   }}
                   className="rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground"
                 >
@@ -172,43 +205,66 @@ function ResultPage() {
   );
 }
 
-function ResultSide({
+function numericSearchValue(value: string) {
+  const parsed = Number(value);
+  return value.trim() && Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function MatchupSide({
   team,
-  score,
-  pct,
+  label,
   align = "left",
-  winner = false,
 }: {
   team: ReturnType<typeof getTeam>;
-  score: number;
-  pct: number;
+  label: string;
   align?: "left" | "right";
-  winner?: boolean;
 }) {
   if (!team) return null;
   return (
-    <div className={`flex flex-col items-center gap-4 ${align === "right" ? "md:items-end" : "md:items-start"}`}>
+    <div
+      className={`flex flex-col items-center gap-4 ${align === "right" ? "md:items-end" : "md:items-start"}`}
+    >
       <div className="rounded-2xl bg-background/5 p-4 ring-1 ring-background/10">
         <TeamLogo team={team} size={88} />
       </div>
       <div className={`${align === "right" ? "md:text-right" : "md:text-left"} text-center`}>
-        {winner && (
-          <span className="mb-2 inline-block rounded-full bg-primary px-3 py-0.5 text-[10px] font-bold uppercase tracking-widest text-primary-foreground">
-            Winner
-          </span>
-        )}
+        <span className="mb-2 inline-block rounded-full bg-background/10 px-3 py-0.5 text-[10px] font-bold uppercase tracking-widest text-background/70">
+          {label}
+        </span>
         <p className="font-display text-3xl font-bold leading-tight">{team.short}</p>
         <p className="text-xs uppercase tracking-wider text-background/60">{team.conference}</p>
-      </div>
-      <div className={`flex items-baseline gap-3 ${align === "right" ? "md:flex-row-reverse" : ""}`}>
-        <p className="font-display text-6xl font-bold tracking-tight">{score}</p>
-        <p className="font-mono text-sm text-background/60">{Math.round(pct * 100)}%</p>
       </div>
     </div>
   );
 }
 
-function LoadingState({ teamA, teamB }: { teamA: NonNullable<ReturnType<typeof getTeam>>; teamB: NonNullable<ReturnType<typeof getTeam>> }) {
+function ErrorState({ error }: { error: string }) {
+  return (
+    <section className="border-b border-border">
+      <div className="mx-auto max-w-2xl px-6 py-24 text-center">
+        <h1 className="font-display text-3xl font-bold">Backend connection failed</h1>
+        <p className="mt-3 text-muted-foreground">{error}</p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Start Django on port 8000, then run the prediction again.
+        </p>
+        <Link
+          to="/predict"
+          className="mt-6 inline-block rounded-full bg-foreground px-6 py-3 text-sm font-semibold text-background"
+        >
+          Back to matchup
+        </Link>
+      </div>
+    </section>
+  );
+}
+
+function LoadingState({
+  teamA,
+  teamB,
+}: {
+  teamA: NonNullable<ReturnType<typeof getTeam>>;
+  teamB: NonNullable<ReturnType<typeof getTeam>>;
+}) {
   return (
     <section className="border-b border-border">
       <div className="mx-auto max-w-7xl px-6 py-24">
