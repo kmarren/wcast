@@ -167,8 +167,9 @@ Key topics covered:
 ## Running Locally
 
 ### Clone Repository
-git clone 
-cd 
+git clone https://github.com/kmarren/wcast.git
+
+cd wcast
 
 ### Backend Setup
 cd backend
