@@ -15,16 +15,11 @@ export default defineConfig({
   vite: {
     server: {
       proxy: {
-        "/prediction/": {
+        "/api/": {
           target: "http://127.0.0.1:8000",
           changeOrigin: true,
-          configure: (proxy) => {
-            proxy.on("proxyReq", (proxyReq) => {
-              proxyReq.setHeader("Origin", "http://127.0.0.1:8000");
-            });
-          },
         },
-      },
+      }
     },
   },
 });

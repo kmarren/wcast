@@ -14,7 +14,7 @@ export function SiteHeader() {
         <Link to="/" className="flex items-center gap-2 group">
           <img
             src="/wcastlogo.png"
-            alt="HoopsEdge logo"
+            alt="WCast logo"
             className="h-30 w-30 object-contain"
           />
         </Link>
@@ -52,14 +52,11 @@ export function SiteFooter() {
     <footer className="border-t border-border bg-background">
       <div className="mx-auto flex max-w-7xl flex-col items-start justify-between gap-4 px-6 py-10 md:flex-row md:items-center">
         <div>
-          <p className="font-display text-base font-bold">HoopsEdge</p>
+          <p className="font-display text-base font-bold">WCast</p>
           <p className="text-sm text-muted-foreground">
             ML-driven matchup predictions for NCAA D1 Women's Basketball.
           </p>
         </div>
-        <p className="text-xs text-muted-foreground">
-          © {new Date().getFullYear()} HoopsEdge — Predictions for entertainment only.
-        </p>
       </div>
     </footer>
   );

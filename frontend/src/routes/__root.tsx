@@ -72,10 +72,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "HoopsEdge — NCAA Women's Basketball Predictions" },
+      { title: "WCast — NCAA Women's Basketball Predictions" },
       { name: "description", content: "ML-powered matchup predictions for NCAA Division I Women's Basketball." },
-      { name: "author", content: "HoopsEdge" },
-      { property: "og:title", content: "HoopsEdge — NCAA Women's Basketball Predictions" },
+      { name: "author", content: "WCast" },
+      { property: "og:title", content: "WCast — NCAA Women's Basketball Predictions" },
       { property: "og:description", content: "ML-powered matchup predictions for NCAA Division I Women's Basketball." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

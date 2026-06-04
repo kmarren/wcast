@@ -1,6 +1,6 @@
 import { BACKEND_TEAM_STATS, TEAMS, type Team } from "@/data/teams";
 
-const PREDICTION_PATH = "/prediction/";
+const PREDICTION_PATH = "/api/predict/";
 
 export type ModelPick = {
   model: "Logistic Regression" | "Random Forest";
@@ -36,24 +36,6 @@ function getStats(teamId: string) {
   return stats;
 }
 
-function extractCsrfToken(html: string) {
-  return html.match(/name=["']csrfmiddlewaretoken["'] value=["']([^"']+)["']/)?.[1] ?? "";
-}
-
-function extractResult(html: string, heading: string) {
-  const text = html.replace(/\s+/g, " ");
-  return text.match(new RegExp(`${heading}.*?Prediction:\\s*(Win|Loss)`, "i"))?.[1] as
-    | "Win"
-    | "Loss"
-    | undefined;
-}
-
-function extractProbability(html: string, label: string) {
-  const text = html.replace(/\s+/g, " ");
-  const value = text.match(new RegExp(`${label}:\\s*([0-9.]+)`, "i"))?.[1];
-  return value ? Number(value) : undefined;
-}
-
 function winnerFor(result: "Win" | "Loss", teamA: Team, teamB: Team) {
   return result === "Win" ? teamA : teamB;
 }
@@ -77,21 +59,7 @@ export async function predict(
   const teamAStats = getStats(teamA.id);
   const teamBStats = getStats(teamB.id);
 
-  const csrfResponse = await fetch(PREDICTION_PATH, {
-    credentials: "include",
-  });
-
-  if (!csrfResponse.ok) {
-    throw new Error("Could not reach the Django prediction page.");
-  }
-
-  const csrfToken = extractCsrfToken(await csrfResponse.text());
-  if (!csrfToken) {
-    throw new Error("Django did not provide a CSRF token.");
-  }
-
   const body = new URLSearchParams({
-    csrfmiddlewaretoken: csrfToken,
     team: teamAStats.backendName,
     teamGamesPlayed: statValue(inputStats.teamGamesPlayed, teamAStats.gamesPlayed),
     teamWinPercentage: statValue(inputStats.teamWinPercentage, teamAStats.winPercentage),
@@ -106,9 +74,7 @@ export async function predict(
     method: "POST",
     credentials: "include",
     headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-      "X-CSRFToken": csrfToken,
-      "X-Requested-With": "XMLHttpRequest",
+      "Content-Type": "application/x-www-form-urlencoded"
     },
     body,
   });
@@ -125,13 +91,14 @@ export async function predict(
     );
   }
 
-  const html = await response.text();
-  const logisticLossProbability = extractProbability(html, "Logistic Loss Probability");
-  const logisticWinProbability = extractProbability(html, "Logistic Win Probability");
-  const randomForestLossProbability = extractProbability(html, "Random Forest Loss Probability");
-  const randomForestWinProbability = extractProbability(html, "Random Forest Win Probability");
-  const logisticResult = extractResult(html, "Logistic Regression");
-  const randomForestResult = extractResult(html, "Random Forest");
+  const data = await response.json();
+  const logisticResult = data.logistic_prediction as "Win" | "Loss";
+  const randomForestResult = data.random_forest_prediction as "Win" | "Loss";
+
+  const logisticLossProbability = Number(data.logistic_probability[0]);
+  const logisticWinProbability = Number(data.logistic_probability[1]);
+  const randomForestLossProbability = Number(data.random_forest_probability[0]);
+  const randomForestWinProbability = Number(data.random_forest_probability[1]);
 
   if (!logisticResult || !randomForestResult) {
     throw new Error("The backend response did not include prediction results.");

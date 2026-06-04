@@ -1,37 +1,29 @@
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 from .ml.predict import predict_game
-from django.shortcuts import render
-from .forms import GameForm
 
-def main(request):
-  return render(request, 'home.html')
+@csrf_exempt
+def predict_api(request):
+    if request.method != "POST":
+        return JsonResponse({"error": "POST required"}, status=405)
 
-def create_game(request):
-    results = None
-    game = None
+    game_info = {
+        "Team": request.POST["team"],
+        "Opponent": request.POST["opponent"],
+        "games_played_before_date": int(request.POST["teamGamesPlayed"]),
+        "opponent_games_played_before_date": int(request.POST["opponentGamesPlayed"]),
+        "win_pct_before_date": float(request.POST["teamWinPercentage"]),
+        "opponent_win_pct_before_date": float(request.POST["opponentWinPercentage"]),
+        "Team_SOS": float(request.POST["teamSOS"]),
+        "Opponent_SOS": float(request.POST["opponentSOS"]),
+    }
 
-    if request.method == "POST":
-        form = GameForm(request.POST)
+    results = predict_game(game_info)
 
-        if form.is_valid():
-            game = form.save()
-
-            game_info = {
-                'Team': game.team,
-                'Opponent': game.opponent,
-                'games_played_before_date': game.teamGamesPlayed,
-                'opponent_games_played_before_date': game.opponentGamesPlayed,
-                'win_pct_before_date': game.teamWinPercentage,
-                'opponent_win_pct_before_date': game.opponentWinPercentage,
-                'Team_SOS': game.teamSOS,
-                'Opponent_SOS': game.opponentSOS,
-            }
-
-            results = predict_game(game_info)
-    else:
-        form = GameForm()
-
-    return render(request, 'prediction.html', {
-        'form': form,
-        'game': game,
-        'results': results,
+    return JsonResponse({
+        "logistic_prediction": str(results["logistic_prediction"]),
+        "random_forest_prediction": str(results["random_forest_prediction"]),
+        "classes": [str(c) for c in results["classes"]],
+        "logistic_probability": [float(p) for p in results["logistic_probability"]],
+        "random_forest_probability": [float(p) for p in results["random_forest_probability"]],
     })
