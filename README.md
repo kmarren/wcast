@@ -150,7 +150,7 @@ The frontend was initially scaffolded using Lovable and subsequently customized 
 
 ## Research Report
 
-A detailed report describing dataset construction, model development, evaluation methodology, trust considerations, and explainability analysis is included in https://github.com/kmarren/WomensBasketball-csce581Spring2026.git.
+Detailed reports describing dataset construction, model development, evaluation methodology, trust considerations, and explainability analysis are included in https://github.com/kmarren/WomensBasketball-csce581Spring2026.git and https://github.com/kmarren/Womens-Basketball-Machine-Learning-Models.git. One project was done for a Math Foundations of Machine Learning course, and one was done for Trustworthy Artificial Intelligence course. 
 
 Key topics covered:
 
