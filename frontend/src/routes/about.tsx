@@ -19,19 +19,15 @@ function AboutPage() {
         <div className="mx-auto max-w-3xl px-6 py-20">
           <p className="text-xs font-semibold uppercase tracking-widest text-primary">How it works</p>
           <h1 className="mt-2 font-display text-5xl font-bold tracking-tight">
-            A model trained on a decade of D1 hoops.
+            For womens basketball fans by womens basketball fans. 
           </h1>
           <div className="mt-10 space-y-8 text-lg leading-relaxed text-muted-foreground">
             <p>
-              HoopsEdge is built on a Django backend that ingests advanced team
-              metrics — offensive and defensive efficiency, pace, rebound margin,
-              and strength of schedule — and runs them through machine learning
-              models trained on years of NCAA Division I Women's Basketball game logs.
+              Women's basketball is rapidly gaining popularity around the world, but has historically been under-represented in similar machine learning contexts. This provided an interesting landscape for exploring this domain. This project explores binary game outcome predictions for NCAA Division 1 Women's Basketball games during the 2025-2026 season using random forest and logistic regression.
             </p>
             <p>
-              For each matchup, the model produces a win probability, a projected
-              final score, and a breakdown of which factors are pushing the call.
-              The frontend you're using now is a clean window onto that engine.
+              For each matchup, each model predicts both the game outcome and probability. Be sure to pay attention to both, 
+              the real insight often lies more in the probability than the prediction. 
             </p>
             <p className="text-sm">
               Predictions are for entertainment and analysis only — not gambling advice.

@@ -6,6 +6,8 @@ export type ModelPick = {
   model: "Logistic Regression" | "Random Forest";
   result: "Win" | "Loss";
   winner: Team;
+  lossProbability: number;
+  winProbability: number;
 };
 
 export type Prediction = {
@@ -44,6 +46,12 @@ function extractResult(html: string, heading: string) {
     | "Win"
     | "Loss"
     | undefined;
+}
+
+function extractProbability(html: string, label: string) {
+  const text = html.replace(/\s+/g, " ");
+  const value = text.match(new RegExp(`${label}:\\s*([0-9.]+)`, "i"))?.[1];
+  return value ? Number(value) : undefined;
 }
 
 function winnerFor(result: "Win" | "Loss", teamA: Team, teamB: Team) {
@@ -118,6 +126,10 @@ export async function predict(
   }
 
   const html = await response.text();
+  const logisticLossProbability = extractProbability(html, "Logistic Loss Probability");
+  const logisticWinProbability = extractProbability(html, "Logistic Win Probability");
+  const randomForestLossProbability = extractProbability(html, "Random Forest Loss Probability");
+  const randomForestWinProbability = extractProbability(html, "Random Forest Win Probability");
   const logisticResult = extractResult(html, "Logistic Regression");
   const randomForestResult = extractResult(html, "Random Forest");
 
@@ -125,18 +137,31 @@ export async function predict(
     throw new Error("The backend response did not include prediction results.");
   }
 
+  if (
+  logisticLossProbability === undefined ||
+  logisticWinProbability === undefined ||
+  randomForestLossProbability === undefined ||
+  randomForestWinProbability === undefined
+) {
+  throw new Error("The backend response did not include probability results.");
+}
+
   const modelPicks: ModelPick[] = [
-    {
-      model: "Logistic Regression",
-      result: logisticResult,
-      winner: winnerFor(logisticResult, teamA, teamB),
-    },
-    {
-      model: "Random Forest",
-      result: randomForestResult,
-      winner: winnerFor(randomForestResult, teamA, teamB),
-    },
-  ];
+  {
+    model: "Logistic Regression",
+    result: logisticResult,
+    winner: winnerFor(logisticResult, teamA, teamB),
+    lossProbability: logisticLossProbability,
+    winProbability: logisticWinProbability,
+  },
+  {
+    model: "Random Forest",
+    result: randomForestResult,
+    winner: winnerFor(randomForestResult, teamA, teamB),
+    lossProbability: randomForestLossProbability,
+    winProbability: randomForestWinProbability,
+  },
+];
 
   return {
     modelPicks,

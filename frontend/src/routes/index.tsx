@@ -54,7 +54,7 @@ function Home() {
               <span className="text-primary">tip-off night?</span>
             </h1>
             <p className="mt-6 max-w-xl text-lg leading-relaxed text-muted-foreground">
-              HoopsEdge uses a machine learning model trained on years of NCAA
+              WCast uses machine learning model trained on thousands of NCAA
               Division I Women's Basketball box scores, advanced metrics, and
               matchup history to project the winner of any head-to-head.
             </p>

@@ -113,7 +113,7 @@ function ResultPage() {
               </p>
               <div className="mt-6 grid items-center gap-10 md:grid-cols-[1fr_auto_1fr]">
                 <MatchupSide team={teamA} label="Team A" />
-                <span className="text-center font-display text-2xl text-background/40">—</span>
+                <span className="text-center font-display text-2xl text-background/40">VS</span>
                 <MatchupSide team={teamB} label="Team B" align="right" />
               </div>
             </div>
@@ -131,7 +131,7 @@ function ResultPage() {
                   </h2>
                 </div>
                 <p className="max-w-md text-sm text-muted-foreground">
-                  Sent to Django as{" "}
+                  {" "}
                   <span className="font-semibold text-foreground">{pred.backendPayload.team}</span>{" "}
                   vs{" "}
                   <span className="font-semibold text-foreground">
@@ -142,22 +142,43 @@ function ResultPage() {
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
-                {pred.modelPicks.map((pick) => (
-                  <div key={pick.model} className="rounded-2xl border border-border bg-card p-5">
-                    <p className="text-xs font-semibold uppercase tracking-widest text-primary">
-                      {pick.model}
-                    </p>
-                    <div className="mt-4 flex items-center gap-4">
-                      <TeamLogo team={pick.winner} size={48} />
-                      <div>
-                        <p className="font-display text-xl font-bold">{pick.winner.short}</p>
-                        <p className="text-sm text-muted-foreground">
-                          Backend returned {pick.result} for Team A.
-                        </p>
+                {pred.modelPicks.map((pick) => {
+                  const winnerProbability =
+                    pick.result === "Win" ? pick.winProbability : pick.lossProbability;
+
+                  return (
+                    <div key={pick.model} className="rounded-2xl border border-border bg-card p-5">
+                      <p className="text-xs font-semibold uppercase tracking-widest text-primary">
+                        {pick.model}
+                      </p>
+
+                      <div className="mt-4 flex items-center gap-4">
+                        <TeamLogo team={pick.winner} size={48} />
+                        <div>
+                          <p className="font-display text-xl font-bold">{pick.winner.short}</p>
+                          <p className="text-sm text-muted-foreground">
+                            Backend returned {pick.result} for Team A.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 space-y-2">
+                        <div>
+                          <div className="flex justify-between text-xs text-muted-foreground">
+                            <span>{pick.winner.short} win probability</span>
+                            <span>{Math.round(winnerProbability * 100)}%</span>
+                          </div>
+                          <div className="mt-1 h-2 rounded-full bg-secondary">
+                            <div
+                              className="h-2 rounded-full bg-primary"
+                              style={{ width: `${winnerProbability * 100}%` }}
+                            />
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </section>

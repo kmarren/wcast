@@ -28,8 +28,16 @@
 
     <h3>Logistic Regression</h3>
     <p>Prediction: {{ results.logistic_prediction }}</p>
+    <p>
+      Logistic Loss probability: {{ results.logistic_probability.0 }}
+      Logistic Win probability: {{ results.logistic_probability.1 }}
+    </p>
 
     <h3>Random Forest</h3>
     <p>Prediction: {{ results.random_forest_prediction }}</p>
+    <p>
+      Random Forest Loss probability: {{ results.random_forest_probability.0 }}
+      Random Forest Win probability: {{ results.random_forest_probability.1 }}
+    </p>
   {% endif %}
 {% endblock %}
